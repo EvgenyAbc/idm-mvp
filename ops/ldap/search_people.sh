@@ -1,0 +1,1 @@
+ldapsearch -x -LLL -b "ou=People,dc=example,dc=com"

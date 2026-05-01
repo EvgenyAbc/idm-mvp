@@ -1,0 +1,13 @@
+dn: olcDatabase={1}mdb,cn=config
+changetype: modify
+replace: olcAccess
+# Users can change their own userPassword. Auth (bind) needs access to read it.
+olcAccess: {0}to attrs=userPassword
+  by self write
+  by anonymous auth
+  by * none
+# All authenticated users can read everything else
+olcAccess: {1}to *
+  by self write
+  by users read
+  by * none

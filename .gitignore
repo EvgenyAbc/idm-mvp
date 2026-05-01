@@ -1,0 +1,4 @@
+dashboard/node_modules/
+dashboard/dist/
+storage/idm_alpha.sqlite
+storage/csv/upload_*.csv

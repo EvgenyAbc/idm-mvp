@@ -1,0 +1,4 @@
+user,password,httpUrl
+jdoe,123,https://example.com/users/jdoe
+asmith,123,https://example.com/users/asmith
+alphaadmin,123,https://example.com/users/alphaadmin

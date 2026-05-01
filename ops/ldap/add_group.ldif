@@ -1,0 +1,4 @@
+dn: cn=developers,ou=Groups,dc=example,dc=com
+objectClass: posixGroup
+cn: developers
+gidNumber: 10000

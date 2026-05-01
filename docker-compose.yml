@@ -1,0 +1,107 @@
+services:
+  ldap:
+    image: osixia/openldap:1.5.0
+    container_name: idm_ldap
+    environment:
+      LDAP_ORGANISATION: IDM
+      LDAP_DOMAIN: example.com
+      LDAP_BASE_DN: dc=example,dc=com
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-123}
+      LDAP_CONFIG_PASSWORD: ${LDAP_CONFIG_PASSWORD:-123}
+      LDAP_TLS: "false"
+    ports:
+      - "${LDAP_PORT:-3389}:389"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    healthcheck:
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://127.0.0.1:389 -D cn=admin,dc=example,dc=com -w ${LDAP_ADMIN_PASSWORD:-123} -b dc=example,dc=com -s base dn >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: idm_backend
+    environment:
+      LDAP_URI: ldap://ldap:389
+      LDAP_BASE_DN: ${LDAP_BASE_DN:-dc=example,dc=com}
+      LDAP_ADMIN_DN: ${LDAP_ADMIN_DN:-cn=admin,dc=example,dc=com}
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-123}
+      SQLITE_DB_PATH: ${SQLITE_DB_PATH:-idm_docker.sqlite}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-alphaadmin}
+      RBAC_BOOTSTRAP_ADMIN: ${RBAC_BOOTSTRAP_ADMIN:-true}
+      BACKEND_PORT: 8080
+    depends_on:
+      ldap:
+        condition: service_healthy
+    volumes:
+      - ./storage:/app/storage
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1:8080/api/health\") === false ? 1 : 0);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  bootstrap:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: idm_bootstrap
+    environment:
+      LDAP_BASE_DN: ${LDAP_BASE_DN:-dc=example,dc=com}
+      LDAP_ADMIN_DN: ${LDAP_ADMIN_DN:-cn=admin,dc=example,dc=com}
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-123}
+      API_BASE: http://backend:8080
+      LDAP_HOST_URI: ldap://ldap:389
+      CSV_PATH: /app/storage/csv/bootstrap_30_users.csv
+      RESET_LDAP: ${BOOTSTRAP_RESET_LDAP:-1}
+      RESET_IDM_DB: ${BOOTSTRAP_RESET_IDM_DB:-0}
+      USE_DOCKER: "0"
+      AUTO_START_BACKEND: "0"
+      STOP_BACKEND_ON_DONE: "0"
+      BOOTSTRAP_MARKER_PATH: /app/storage/.docker_first_bootstrap_done
+      BOOTSTRAP_MARKER_ENABLE: ${BOOTSTRAP_MARKER_ENABLE:-1}
+      BOOTSTRAP_DB_PATH: /app/storage/${SQLITE_DB_PATH:-idm_docker.sqlite}
+      SQLITE_DB_PATH: ${SQLITE_DB_PATH:-idm_docker.sqlite}
+    depends_on:
+      ldap:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+    command: ["/bin/bash", "-lc", "/app/ops/bootstrap_fresh_ldap_idm.sh"]
+    restart: "no"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+      args:
+        VITE_API_BASE: ""
+    container_name: idm_dashboard
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: idm_gateway
+    depends_on:
+      dashboard:
+        condition: service_started
+      backend:
+        condition: service_healthy
+      bootstrap:
+        condition: service_completed_successfully
+    ports:
+      - "${HTTP_PORT:-8088}:80"
+    volumes:
+      - ./ops/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  ldap_data:
+  ldap_config:

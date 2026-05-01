@@ -1,0 +1,22 @@
+{
+    "name": "idm/backend",
+    "autoload": {
+        "psr-4": {
+            "IDM\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "IDM\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
