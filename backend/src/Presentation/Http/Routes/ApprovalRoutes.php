@@ -83,10 +83,16 @@ final class ApprovalRoutes
             if ($action === 'approve') {
                 $ctx->approvals->decide($id, 'approved');
                 $ctx->ldap->applyApprovedChange((string) $item['username'], (string) $item['field_name'], (string) $item['new_value']);
-                if (($item['field_name'] ?? null) === 'labeledURI') {
-                    $sourceRow = $ctx->sourceUsers->findByUser((string) $item['username']);
-                    if ($sourceRow !== null) {
-                        $ctx->sourceUsers->updateHttpUrl((string) $item['username'], (string) $item['new_value']);
+                $sourceRow = $ctx->sourceUsers->findByUser((string) $item['username']);
+                if ($sourceRow !== null) {
+                    $field = (string) ($item['field_name'] ?? '');
+                    $newVal = (string) $item['new_value'];
+                    if ($field === 'labeledURI') {
+                        $ctx->sourceUsers->updateHttpUrl((string) $item['username'], $newVal);
+                    } elseif ($field === 'mail') {
+                        $ctx->sourceUsers->updateMail((string) $item['username'], $newVal);
+                    } elseif ($field === 'telephoneNumber') {
+                        $ctx->sourceUsers->updateTelephoneNumber((string) $item['username'], $newVal);
                     }
                 }
                 $ctx->audit->log([

@@ -85,6 +85,9 @@ function ProfileEditModal({
   const [value, setValue] = useState(currentValue)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingNotice, setPendingNotice] = useState<string | null>(null)
+
+  const inputType = attribute === 'mail' ? 'email' : attribute === 'telephoneNumber' ? 'tel' : 'text'
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -92,7 +95,15 @@ function ProfileEditModal({
     setSaving(true)
     setError(null)
     try {
-      await api.ldapUpdateEntry(entryDn, { [attribute]: value })
+      const res = await api.ldapUpdateEntry(entryDn, { [attribute]: value })
+      if (res.pending_approval) {
+        const ids =
+          res.approval_fields ??
+          (res.approval_field != null && res.approval_field !== '' ? [res.approval_field] : [])
+        const fields = ids.join(', ')
+        setPendingNotice(t('profile.pendingApproval', { fields }))
+        return
+      }
       onClose()
       window.location.reload()
     } catch (err) {
@@ -102,12 +113,33 @@ function ProfileEditModal({
     }
   }
 
+  if (pendingNotice) {
+    return (
+      <>
+        <p className="banner-message" role="status">
+          {pendingNotice}
+        </p>
+        <div className="modal-actions">
+          <button
+            type="button"
+            onClick={() => {
+              onClose()
+              window.location.reload()
+            }}
+          >
+            {t('common.close')}
+          </button>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       <h3>{t('profile.modalTitleEdit', { attribute })}</h3>
       <p className="muted">{t('profile.updateHint')}</p>
       <form onSubmit={submit}>
-        <input value={value} onChange={(event) => setValue(event.target.value)} autoFocus />
+        <input type={inputType} value={value} onChange={(event) => setValue(event.target.value)} autoFocus />
         {error ? <p className="banner-message">{error}</p> : null}
         <div className="modal-actions">
           <button type="submit" disabled={saving}>
@@ -118,6 +150,58 @@ function ProfileEditModal({
           </button>
         </div>
       </form>
+    </>
+  )
+}
+
+function AllPermissionsModalBody({ permissions, onClose }: { permissions: string[]; onClose: () => void }) {
+  const t = useT()
+  return (
+    <>
+      <h3>{t('profile.sessionPermissionsModalTitle')}</h3>
+      {permissions.length === 0 ? (
+        <p className="muted">{t('profile.noPermissions')}</p>
+      ) : (
+        <div className="profile-rbac-modal-scroll">
+          <ul className="profile-rbac-groups-list">
+            {permissions.map((permission) => (
+              <li key={permission} className="profile-rbac-groups-li">
+                {permission}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="modal-actions">
+        <button type="button" onClick={onClose}>
+          {t('common.close')}
+        </button>
+      </div>
+    </>
+  )
+}
+
+function AllGroupsModalBody({ groups, onClose }: { groups: string[]; onClose: () => void }) {
+  const t = useT()
+  return (
+    <>
+      <h3>{t('profile.authGroupsModalTitle')}</h3>
+      {groups.length === 0 ? (
+        <p className="muted">{t('profile.noGroups')}</p>
+      ) : (
+        <ul className="profile-rbac-groups-list">
+          {groups.map((group) => (
+            <li key={group} className="profile-rbac-groups-li">
+              {group}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="modal-actions">
+        <button type="button" onClick={onClose}>
+          {t('common.close')}
+        </button>
+      </div>
     </>
   )
 }
@@ -169,37 +253,48 @@ export function ProfilePage() {
   const activePermissions = rootData?.session.permissions ?? []
   const activeGroups = rootData?.session.groups ?? []
 
+  const permissionsModalKey = 'profile-all-permissions'
+  const groupsModalKey = 'profile-all-groups'
+
   const permissionsBlock = (
-    <>
-      <div className="profile-permissions">
-        <strong>{t('profile.sessionPermissions')}</strong>
-        {activePermissions.length ? (
-          <div className="profile-permissions-list">
-            {activePermissions.map((permission) => (
-              <span key={permission} className="profile-permission-chip">
-                {permission}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">{t('profile.noPermissions')}</p>
-        )}
-      </div>
-      <div className="profile-permissions">
-        <strong>{t('profile.authGroups')}</strong>
-        {activeGroups.length ? (
-          <div className="profile-permissions-list">
-            {activeGroups.map((group) => (
-              <span key={group} className="profile-permission-chip">
-                {group}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">{t('profile.noGroups')}</p>
-        )}
-      </div>
-    </>
+    <div className="profile-permissions-toolbar">
+      <button
+        type="button"
+        className="profile-permissions-open"
+        aria-haspopup="dialog"
+        aria-label={t('profile.rbacAllPermissionsAria')}
+        onClick={() =>
+          openModal({
+            key: permissionsModalKey,
+            title: t('profile.sessionPermissionsModalTitle'),
+            ariaLabel: t('profile.rbacAllPermissionsAria'),
+            content: (
+              <AllPermissionsModalBody permissions={activePermissions} onClose={() => closeModal(permissionsModalKey)} />
+            ),
+          })
+        }
+      >
+        <span>{t('profile.sessionPermissionsLabel')}</span>
+        <span className="profile-permissions-count">({activePermissions.length})</span>
+      </button>
+      <button
+        type="button"
+        className="profile-permissions-open"
+        aria-haspopup="dialog"
+        aria-label={t('profile.rbacAllGroupsAria')}
+        onClick={() =>
+          openModal({
+            key: groupsModalKey,
+            title: t('profile.authGroupsModalTitle'),
+            ariaLabel: t('profile.rbacAllGroupsAria'),
+            content: <AllGroupsModalBody groups={activeGroups} onClose={() => closeModal(groupsModalKey)} />,
+          })
+        }
+      >
+        <span>{t('profile.authGroupsLabel')}</span>
+        <span className="profile-permissions-count">({activeGroups.length})</span>
+      </button>
+    </div>
   )
 
   if (!canViewAttributes) {

@@ -100,7 +100,13 @@ final class CsvProvisioner implements SourcePolicy
             }
 
             try {
-                $this->ldap->upsertUser($uid, $row['password'], $row['httpUrl']);
+                $this->ldap->upsertUser(
+                    $uid,
+                    $row['password'],
+                    $row['httpUrl'],
+                    trim((string) ($row['mail'] ?? '')),
+                    trim((string) ($row['telephoneNumber'] ?? ''))
+                );
                 $this->audit->log([
                     'run_id' => $runId,
                     'event_type' => 'provisioning',
@@ -134,7 +140,7 @@ final class CsvProvisioner implements SourcePolicy
     }
 
     /**
-     * @return list<array{user:string,password:string,httpUrl:string}>
+     * @return list<array{user:string,password:string,httpUrl:string,mail:string,telephoneNumber:string}>
      */
     public function parseCsvFile(string $csvPath): array
     {
@@ -161,6 +167,8 @@ final class CsvProvisioner implements SourcePolicy
                 'user' => trim((string) $row['user']),
                 'password' => (string) ($row['password'] ?? ''),
                 'httpUrl' => trim((string) ($row['httpUrl'] ?? '')),
+                'mail' => trim((string) ($row['mail'] ?? '')),
+                'telephoneNumber' => trim((string) ($row['telephoneNumber'] ?? '')),
             ];
         }
         fclose($fp);
@@ -170,7 +178,7 @@ final class CsvProvisioner implements SourcePolicy
     /**
      * Imports CSV rows into SQLite source_users and returns imported rows.
      *
-     * @return list<array{user:string,password:string,httpUrl:string}>
+     * @return list<array{user:string,password:string,httpUrl:string,mail:string,telephoneNumber:string}>
      */
     public function importCsvFile(string $csvPath): array
     {

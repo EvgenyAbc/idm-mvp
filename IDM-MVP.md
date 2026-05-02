@@ -52,13 +52,11 @@
 
 После импорта запись появляется в каталоге и готова к сверке источников.
 
-![Запись в LDAP](tutorial/Screenshot%20from%202026-05-01%2012-37-27.png)
+![Запись в LDAP](tutorial/Screenshot%20from%202026-05-01%2012-37-37.png)
 
 ## Шаг 8. Запуск reconciliation
 
 Под админом открываем `/ldap/operations/reconciliation` и запускаем **Run Reconciliation** для синхронизации источников.
-
-![Run Reconciliation](tutorial/Screenshot%20from%202026-05-01%2012-37-37.png)
 
 Результат показывает успешное завершение процедуры reconciliation без ошибок выполнения.
 

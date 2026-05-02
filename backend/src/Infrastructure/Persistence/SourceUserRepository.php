@@ -13,12 +13,12 @@ final class SourceUserRepository
     }
 
     /**
-     * @return list<array{user:string,password:string,httpUrl:string}>
+     * @return list<array{user:string,password:string,httpUrl:string,mail:string,telephoneNumber:string}>
      */
     public function all(): array
     {
         $stmt = $this->pdo->query(
-            'SELECT username, password, http_url FROM source_users ORDER BY username ASC'
+            'SELECT username, password, http_url, mail, telephone_number FROM source_users ORDER BY username ASC'
         );
         $items = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
@@ -26,6 +26,8 @@ final class SourceUserRepository
                 'user' => (string) ($row['username'] ?? ''),
                 'password' => (string) ($row['password'] ?? ''),
                 'httpUrl' => (string) ($row['http_url'] ?? ''),
+                'mail' => (string) ($row['mail'] ?? ''),
+                'telephoneNumber' => (string) ($row['telephone_number'] ?? ''),
             ];
         }
 
@@ -33,7 +35,7 @@ final class SourceUserRepository
     }
 
     /**
-     * @return list<array{user:string,password:string,httpUrl:string}>
+     * @return list<array{user:string,password:string,httpUrl:string,mail:string,telephoneNumber:string}>
      */
     public function replaceAll(array $rows): array
     {
@@ -41,7 +43,7 @@ final class SourceUserRepository
         try {
             $this->pdo->exec('DELETE FROM source_users');
             $stmt = $this->pdo->prepare(
-                'INSERT INTO source_users (username, password, http_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+                'INSERT INTO source_users (username, password, http_url, mail, telephone_number, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
             );
             $now = gmdate('c');
             foreach ($rows as $row) {
@@ -53,6 +55,8 @@ final class SourceUserRepository
                     $user,
                     (string) ($row['password'] ?? ''),
                     trim((string) ($row['httpUrl'] ?? '')),
+                    trim((string) ($row['mail'] ?? '')),
+                    trim((string) ($row['telephoneNumber'] ?? '')),
                     $now,
                     $now,
                 ]);
@@ -66,13 +70,20 @@ final class SourceUserRepository
         return $this->all();
     }
 
-    public function upsert(string $user, string $password, string $httpUrl): void
-    {
-        $sql = 'INSERT INTO source_users (username, password, http_url, created_at, updated_at)
-                VALUES (:username, :password, :http_url, :created_at, :updated_at)
+    public function upsert(
+        string $user,
+        string $password,
+        string $httpUrl,
+        string $mail = '',
+        string $telephoneNumber = ''
+    ): void {
+        $sql = 'INSERT INTO source_users (username, password, http_url, mail, telephone_number, created_at, updated_at)
+                VALUES (:username, :password, :http_url, :mail, :telephone_number, :created_at, :updated_at)
                 ON CONFLICT(username) DO UPDATE SET
                     password = excluded.password,
                     http_url = excluded.http_url,
+                    mail = excluded.mail,
+                    telephone_number = excluded.telephone_number,
                     updated_at = excluded.updated_at';
         $stmt = $this->pdo->prepare($sql);
         $now = gmdate('c');
@@ -80,18 +91,20 @@ final class SourceUserRepository
             ':username' => trim($user),
             ':password' => $password,
             ':http_url' => trim($httpUrl),
+            ':mail' => trim($mail),
+            ':telephone_number' => trim($telephoneNumber),
             ':created_at' => $now,
             ':updated_at' => $now,
         ]);
     }
 
     /**
-     * @return array{user:string,password:string,httpUrl:string}|null
+     * @return array{user:string,password:string,httpUrl:string,mail:string,telephoneNumber:string}|null
      */
     public function findByUser(string $user): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT username, password, http_url FROM source_users WHERE username = ? LIMIT 1'
+            'SELECT username, password, http_url, mail, telephone_number FROM source_users WHERE username = ? LIMIT 1'
         );
         $stmt->execute([trim($user)]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -103,6 +116,8 @@ final class SourceUserRepository
             'user' => (string) ($row['username'] ?? ''),
             'password' => (string) ($row['password'] ?? ''),
             'httpUrl' => (string) ($row['http_url'] ?? ''),
+            'mail' => (string) ($row['mail'] ?? ''),
+            'telephoneNumber' => (string) ($row['telephone_number'] ?? ''),
         ];
     }
 
@@ -112,6 +127,22 @@ final class SourceUserRepository
             'UPDATE source_users SET http_url = ?, updated_at = ? WHERE username = ?'
         );
         $stmt->execute([trim($httpUrl), gmdate('c'), trim($user)]);
+    }
+
+    public function updateMail(string $user, string $mail): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE source_users SET mail = ?, updated_at = ? WHERE username = ?'
+        );
+        $stmt->execute([trim($mail), gmdate('c'), trim($user)]);
+    }
+
+    public function updateTelephoneNumber(string $user, string $telephoneNumber): void
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE source_users SET telephone_number = ?, updated_at = ? WHERE username = ?'
+        );
+        $stmt->execute([trim($telephoneNumber), gmdate('c'), trim($user)]);
     }
 
     public function delete(string $user): void

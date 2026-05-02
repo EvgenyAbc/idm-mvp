@@ -8,7 +8,7 @@ namespace IDM\Domain\Reconciliation;
 interface DirectoryGateway
 {
     /**
-     * List People entries (uid, dn, labeledURI as available).
+     * List People entries (uid, dn, labeledURI, mail, telephoneNumber, uidNumber as available).
      *
      * @return list<array<string, mixed>>
      */
@@ -18,6 +18,10 @@ interface DirectoryGateway
     public function verifyUserPassword(string $uid, string $plainPassword): bool;
 
     public function setLabeledUri(string $dn, string $httpUrl): void;
+
+    public function setMail(string $dn, string $mail): void;
+
+    public function setTelephoneNumber(string $dn, string $telephoneNumber): void;
 
     public function quarantineUser(string $uid): void;
 

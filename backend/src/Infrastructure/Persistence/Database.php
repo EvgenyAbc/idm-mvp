@@ -97,5 +97,24 @@ final class Database
         $pdo->exec(
             'CREATE INDEX IF NOT EXISTS idx_source_users_updated_at ON source_users(updated_at)'
         );
+
+        self::migrateSourceUsersColumns($pdo);
+    }
+
+    private static function migrateSourceUsersColumns(PDO $pdo): void
+    {
+        $stmt = $pdo->query('PRAGMA table_info(source_users)');
+        $cols = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (isset($row['name'])) {
+                $cols[] = (string) $row['name'];
+            }
+        }
+        if (!in_array('mail', $cols, true)) {
+            $pdo->exec("ALTER TABLE source_users ADD COLUMN mail TEXT NOT NULL DEFAULT ''");
+        }
+        if (!in_array('telephone_number', $cols, true)) {
+            $pdo->exec("ALTER TABLE source_users ADD COLUMN telephone_number TEXT NOT NULL DEFAULT ''");
+        }
     }
 }

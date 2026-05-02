@@ -180,6 +180,100 @@ final class Reconciler
             }
         }
 
+        foreach ($csvRowsByUid as $uid => $row) {
+            if (!isset($ldapByUid[$uid])) {
+                continue;
+            }
+            $person = $ldapByUid[$uid];
+            $csvVal = trim((string) ($row['mail'] ?? ''));
+            $ldapVal = trim((string) ($person['mail'] ?? ''));
+            if ($csvVal === $ldapVal) {
+                continue;
+            }
+
+            $driftDetected++;
+            $dn = trim((string) ($person['dn'] ?? ''));
+            $baseEvent = [
+                'run_id' => $runId,
+                'event_type' => 'reconciliation',
+                'username' => $uid,
+                'field_name' => 'mail',
+                'old_value' => $ldapVal === '' ? null : $ldapVal,
+                'new_value' => $csvVal === '' ? null : $csvVal,
+            ];
+
+            if ($dn === '') {
+                $driftRemediateFailed++;
+                $this->audit->log($baseEvent + [
+                    'status' => 'denied',
+                    'reason' => 'LDAP entry has no DN; cannot remediate mail',
+                ]);
+                continue;
+            }
+
+            try {
+                $this->ldap->setMail($dn, $csvVal);
+                $driftRemediated++;
+                $this->audit->log($baseEvent + [
+                    'status' => 'remediated',
+                    'reason' => 'Direct LDAP change reconciled from source (mail)',
+                ]);
+            } catch (\Throwable $e) {
+                $driftRemediateFailed++;
+                $this->audit->log($baseEvent + [
+                    'status' => 'denied',
+                    'reason' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        foreach ($csvRowsByUid as $uid => $row) {
+            if (!isset($ldapByUid[$uid])) {
+                continue;
+            }
+            $person = $ldapByUid[$uid];
+            $csvVal = trim((string) ($row['telephoneNumber'] ?? ''));
+            $ldapVal = trim((string) ($person['telephoneNumber'] ?? ''));
+            if ($csvVal === $ldapVal) {
+                continue;
+            }
+
+            $driftDetected++;
+            $dn = trim((string) ($person['dn'] ?? ''));
+            $baseEvent = [
+                'run_id' => $runId,
+                'event_type' => 'reconciliation',
+                'username' => $uid,
+                'field_name' => 'telephoneNumber',
+                'old_value' => $ldapVal === '' ? null : $ldapVal,
+                'new_value' => $csvVal === '' ? null : $csvVal,
+            ];
+
+            if ($dn === '') {
+                $driftRemediateFailed++;
+                $this->audit->log($baseEvent + [
+                    'status' => 'denied',
+                    'reason' => 'LDAP entry has no DN; cannot remediate telephoneNumber',
+                ]);
+                continue;
+            }
+
+            try {
+                $this->ldap->setTelephoneNumber($dn, $csvVal);
+                $driftRemediated++;
+                $this->audit->log($baseEvent + [
+                    'status' => 'remediated',
+                    'reason' => 'Direct LDAP change reconciled from source (telephoneNumber)',
+                ]);
+            } catch (\Throwable $e) {
+                $driftRemediateFailed++;
+                $this->audit->log($baseEvent + [
+                    'status' => 'denied',
+                    'reason' => $e->getMessage(),
+                ]);
+            }
+        }
+
         $quarantined = 0;
         foreach ($ldapUsers as $person) {
             $uid = $person['uid'] ?? '';

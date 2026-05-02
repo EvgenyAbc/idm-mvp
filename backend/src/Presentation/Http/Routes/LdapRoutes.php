@@ -247,33 +247,42 @@ final class LdapRoutes
                 }
             }
 
-            $pendingLabeledUri = false;
+            /** Self-edit without ldap.edit: labeledURI, mail, telephoneNumber require approval (same policy). */
+            $pendingApprovalFields = [];
             $changesForLdap = $changes;
             if (!$canGlobalEdit) {
-                $labeledUriNew = self::changeValueForAttribute($changes, 'labeledURI');
-                if ($labeledUriNew !== null) {
-                    $oldUri = $ctx->ldap->labeledUriForUid($requestor);
-                    $oldStr = $oldUri ?? '';
-                    if ($labeledUriNew !== $oldStr) {
-                        $ctx->approvals->create(
-                            $requestor,
-                            'labeledURI',
-                            $oldUri,
-                            $labeledUriNew,
-                            'labeledURI updates require administrator approval'
-                        );
+                foreach (['labeledURI', 'mail', 'telephoneNumber'] as $attr) {
+                    $newVal = self::changeValueForAttribute($changes, $attr);
+                    if ($newVal === null) {
+                        continue;
+                    }
+                    $oldRaw = match ($attr) {
+                        'labeledURI' => $ctx->ldap->labeledUriForUid($requestor),
+                        'mail' => $ctx->ldap->mailForUid($requestor),
+                        'telephoneNumber' => $ctx->ldap->telephoneNumberForUid($requestor),
+                        default => null,
+                    };
+                    $oldStr = $oldRaw ?? '';
+                    $reason = match ($attr) {
+                        'labeledURI' => 'labeledURI updates require administrator approval',
+                        'mail' => 'mail updates require administrator approval',
+                        'telephoneNumber' => 'telephoneNumber updates require administrator approval',
+                        default => 'Attribute updates require administrator approval',
+                    };
+                    if ($newVal !== trim((string) $oldStr)) {
+                        $ctx->approvals->create($requestor, $attr, $oldRaw, $newVal, $reason);
                         $ctx->audit->log([
                             'run_id' => 'run_' . gmdate('Ymd_His'),
                             'event_type' => 'ldap_edit',
                             'username' => $requestor,
-                            'field_name' => 'labeledURI',
+                            'field_name' => $attr,
                             'status' => 'pending_approval',
-                            'reason' => 'labeledURI updates require administrator approval',
+                            'reason' => $reason,
                             'payload' => ['dn' => $dn],
                         ]);
-                        $pendingLabeledUri = true;
+                        $pendingApprovalFields[] = $attr;
                     }
-                    $changesForLdap = self::withoutAttribute($changesForLdap, 'labeledURI');
+                    $changesForLdap = self::withoutAttribute($changesForLdap, $attr);
                 }
             }
 
@@ -291,14 +300,15 @@ final class LdapRoutes
                 ]);
             }
 
-            if (!$pendingLabeledUri && $applied === []) {
+            if ($pendingApprovalFields === [] && $applied === []) {
                 throw new RuntimeException('No editable attributes provided');
             }
 
             $response = ['ok' => true, 'applied' => $applied];
-            if ($pendingLabeledUri) {
+            if ($pendingApprovalFields !== []) {
                 $response['pending_approval'] = true;
-                $response['approval_field'] = 'labeledURI';
+                $response['approval_fields'] = $pendingApprovalFields;
+                $response['approval_field'] = $pendingApprovalFields[0];
             }
             Response::json($response);
         } catch (\Throwable $e) {

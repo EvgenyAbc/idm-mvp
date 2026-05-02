@@ -89,6 +89,8 @@ export function OperationsPage() {
             <input name="user" placeholder={t('operations.placeholderUser')} />
             <input name="password" placeholder={t('operations.placeholderPassword')} />
             <input name="httpUrl" placeholder={t('operations.placeholderHttpUrl')} />
+            <input name="mail" type="email" autoComplete="off" placeholder={t('operations.placeholderMail')} />
+            <input name="telephoneNumber" autoComplete="off" placeholder={t('operations.placeholderTelephoneNumber')} />
             <div className="modal-actions">
               <button type="submit" disabled={busy}>
                 {t('common.create')}
@@ -123,6 +125,13 @@ export function OperationsPage() {
             <input name="user" defaultValue={item.user} />
             <input name="password" defaultValue={item.password} />
             <input name="httpUrl" defaultValue={item.httpUrl} />
+            <input name="mail" type="email" autoComplete="off" defaultValue={item.mail ?? ''} placeholder={t('operations.placeholderMail')} />
+            <input
+              name="telephoneNumber"
+              autoComplete="off"
+              defaultValue={item.telephoneNumber ?? ''}
+              placeholder={t('operations.placeholderTelephoneNumber')}
+            />
             <div className="modal-actions">
               <button type="submit" disabled={busy}>
                 {t('common.save')}
@@ -307,6 +316,14 @@ export function OperationsPage() {
                     <span className="muted operations-user-url">
                       {t('operations.userRowUrl', { url: item.httpUrl || t('operations.noUrl') })}
                     </span>
+                    {item.mail?.trim() ? (
+                      <span className="muted operations-user-url">{t('operations.userRowMail', { mail: item.mail })}</span>
+                    ) : null}
+                    {item.telephoneNumber?.trim() ? (
+                      <span className="muted operations-user-url">
+                        {t('operations.userRowTelephone', { phone: item.telephoneNumber })}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="operations-user-actions">
                     <button type="button" onClick={() => openSourceUserModal(item)} disabled={busy}>

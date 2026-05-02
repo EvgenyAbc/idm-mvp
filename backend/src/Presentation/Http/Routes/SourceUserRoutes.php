@@ -67,10 +67,12 @@ final class SourceUserRoutes
             $user = trim((string) ($payload['user'] ?? ''));
             $password = (string) ($payload['password'] ?? '');
             $httpUrl = trim((string) ($payload['httpUrl'] ?? ''));
+            $mail = trim((string) ($payload['mail'] ?? ''));
+            $telephoneNumber = trim((string) ($payload['telephoneNumber'] ?? ''));
             if ($user === '' || $password === '' || $httpUrl === '') {
                 Response::json(['ok' => false, 'message' => 'user, password, and httpUrl are required'], 400);
             }
-            $ctx->sourceUsers->upsert($user, $password, $httpUrl);
+            $ctx->sourceUsers->upsert($user, $password, $httpUrl, $mail, $telephoneNumber);
             AuditLogger::safe($ctx->audit, [
                 'run_id' => $runId,
                 'event_type' => 'source_user_create',
@@ -78,7 +80,7 @@ final class SourceUserRoutes
                 'field_name' => 'source_users.create',
                 'status' => 'allowed',
                 'reason' => 'Source user created or replaced',
-                'payload' => ['user' => $user, 'httpUrl' => $httpUrl],
+                'payload' => ['user' => $user, 'httpUrl' => $httpUrl, 'mail' => $mail, 'telephoneNumber' => $telephoneNumber],
             ]);
             Response::json(['ok' => true]);
         } catch (\Throwable $e) {
@@ -112,10 +114,12 @@ final class SourceUserRoutes
             $payload = $request->jsonBody();
             $password = (string) ($payload['password'] ?? '');
             $httpUrl = trim((string) ($payload['httpUrl'] ?? ''));
+            $mail = trim((string) ($payload['mail'] ?? ''));
+            $telephoneNumber = trim((string) ($payload['telephoneNumber'] ?? ''));
             if ($password === '' || $httpUrl === '') {
                 Response::json(['ok' => false, 'message' => 'password and httpUrl are required'], 400);
             }
-            $ctx->sourceUsers->upsert($user, $password, $httpUrl);
+            $ctx->sourceUsers->upsert($user, $password, $httpUrl, $mail, $telephoneNumber);
             AuditLogger::safe($ctx->audit, [
                 'run_id' => $runId,
                 'event_type' => 'source_user_update',
@@ -123,7 +127,7 @@ final class SourceUserRoutes
                 'field_name' => 'source_users.update',
                 'status' => 'allowed',
                 'reason' => 'Source user updated',
-                'payload' => ['user' => $user, 'httpUrl' => $httpUrl],
+                'payload' => ['user' => $user, 'httpUrl' => $httpUrl, 'mail' => $mail, 'telephoneNumber' => $telephoneNumber],
             ]);
             Response::json(['ok' => true]);
         } catch (\Throwable $e) {

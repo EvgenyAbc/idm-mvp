@@ -53,6 +53,9 @@ export const ru = {
     selectAllAria: "Выбрать все",
     approveSelected: "Утвердить выбранные",
     rejectSelected: "Отклонить выбранные",
+    approve: "Утвердить",
+    reject: "Отклонить",
+    empty: "Нет запросов на согласование.",
     decideHint: "Для действий согласования нужно право `approval.decide`.",
   },
   events: {
@@ -163,6 +166,8 @@ export const ru = {
     bothNoPerm: "Для провижининга и сверки нужны отдельные права RBAC.",
     userRowDn: "DN: {{dn}}",
     userRowUrl: "URL: {{url}}",
+    userRowMail: "Почта: {{mail}}",
+    userRowTelephone: "Тел.: {{phone}}",
     noUrl: "(нет URL)",
     modalCreateTitle: "Добавить запись источника",
     modalCreateHeading: "Добавить запись источника",
@@ -172,6 +177,8 @@ export const ru = {
     placeholderUser: "пользователь",
     placeholderPassword: "пароль",
     placeholderHttpUrl: "httpUrl",
+    placeholderMail: "mail",
+    placeholderTelephoneNumber: "telephoneNumber",
     runProvisioning: "Запустить провижининг",
     cards: {
       sourceUsers: "Пользователи источника",
@@ -208,7 +215,11 @@ export const ru = {
   profile: {
     title: "Мой профиль",
     sessionPermissions: "Права сессии:",
+    sessionPermissionsLabel: "Права сессии",
+    sessionPermissionsModalTitle: "Права сессии",
     authGroups: "Группы авторизации:",
+    authGroupsLabel: "Группы авторизации",
+    authGroupsModalTitle: "Группы авторизации",
     noPermissions: "В текущей сессии нет прав.",
     noGroups: "В контексте авторизации нет групп.",
     noLdapView:
@@ -226,9 +237,13 @@ export const ru = {
     editAttribute: "Изменить {{attribute}}",
     modalTitleEdit: "Изменить {{attribute}}",
     updateHint: "Обновите значение атрибута профиля.",
+    pendingApproval:
+      "Изменение {{fields}} отправлено на согласование администратору. Вступит в силу после утверждения.",
     saving: "Сохранение...",
     editable: "Редактируемое",
     failedUpdate: "Не удалось обновить атрибут",
+    rbacAllPermissionsAria: "Открыть права сессии",
+    rbacAllGroupsAria: "Открыть группы авторизации",
   },
   errors: {
     routeTitle: "Что-то пошло не так",

@@ -8,6 +8,8 @@ export type SourceUserRow = {
   user: string
   password: string
   httpUrl: string
+  mail?: string
+  telephoneNumber?: string
 }
 
 export type LdapUserRow = {
@@ -51,13 +53,19 @@ export const api: {
   ldapSelfNode(): Promise<{ dn?: string; node?: { attributes?: Record<string, unknown> } | null }>
   ldapSearch(q: string): Promise<{ items?: Array<{ dn: string; rdn: string }> }>
   ldapExport(q: string): Promise<Blob>
-  ldapUpdateEntry(dn: string, changes: Record<string, unknown>): Promise<{ pending_approval?: boolean }>
+  ldapUpdateEntry(
+    dn: string,
+    changes: Record<string, unknown>
+  ): Promise<{ pending_approval?: boolean; approval_fields?: string[]; approval_field?: string; applied?: Record<string, string> }>
   approvals(): Promise<{ items?: ApprovalRow[] }>
   approve(id: string): Promise<unknown>
   reject(id: string): Promise<unknown>
   sourceUsers(): Promise<{ items?: SourceUserRow[] }>
   createSourceUser(item: SourceUserRow): Promise<unknown>
-  updateSourceUser(user: string, item: { password: string; httpUrl: string }): Promise<unknown>
+  updateSourceUser(
+    user: string,
+    item: { password: string; httpUrl: string; mail?: string; telephoneNumber?: string }
+  ): Promise<unknown>
   deleteSourceUser(user: string): Promise<unknown>
   runPoll(): Promise<{ run_id: string }>
   reconcile(opts?: { syncPasswords?: boolean }): Promise<{ run_id: string }>

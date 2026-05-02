@@ -92,6 +92,8 @@ export async function operationsAction({ request }: ActionFunctionArgs): Promise
       const user = asString(form.get('user'))
       const password = asString(form.get('password'))
       const httpUrl = asString(form.get('httpUrl'))
+      const mail = asString(form.get('mail'))
+      const telephoneNumber = asString(form.get('telephoneNumber'))
       if (!user || !password || !httpUrl) {
         return { messageKey: 'actions.operationsSourceFieldsRequired' }
       }
@@ -99,9 +101,9 @@ export async function operationsAction({ request }: ActionFunctionArgs): Promise
         return { messageKey: 'actions.operationsUsernameImmutable' }
       }
       if (existingUser) {
-        await api.updateSourceUser(existingUser, { password, httpUrl })
+        await api.updateSourceUser(existingUser, { password, httpUrl, mail, telephoneNumber })
       } else {
-        await api.createSourceUser({ user, password, httpUrl })
+        await api.createSourceUser({ user, password, httpUrl, mail, telephoneNumber })
       }
       return { messageKey: 'actions.operationsSourceSaved', params: { user } }
     }

@@ -63,7 +63,7 @@ services:
       AUTO_START_BACKEND: "0"
       STOP_BACKEND_ON_DONE: "0"
       BOOTSTRAP_MARKER_PATH: /app/storage/.docker_first_bootstrap_done
-      BOOTSTRAP_MARKER_ENABLE: ${BOOTSTRAP_MARKER_ENABLE:-1}
+      BOOTSTRAP_MARKER_ENABLE: ${BOOTSTRAP_MARKER_ENABLE:-0}
       BOOTSTRAP_DB_PATH: /app/storage/${SQLITE_DB_PATH:-idm_docker.sqlite}
       SQLITE_DB_PATH: ${SQLITE_DB_PATH:-idm_docker.sqlite}
     depends_on:

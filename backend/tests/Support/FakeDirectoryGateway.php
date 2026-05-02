@@ -22,6 +22,12 @@ final class FakeDirectoryGateway implements DirectoryGateway
     /** @var list<array{dn:string, httpUrl:string}> */
     public array $setLabeledUriCalls = [];
 
+    /** @var list<array{dn:string, mail:string}> */
+    public array $setMailCalls = [];
+
+    /** @var list<array{dn:string, telephoneNumber:string}> */
+    public array $setTelephoneNumberCalls = [];
+
     /** @var list<string> */
     public array $quarantineCalls = [];
 
@@ -41,6 +47,16 @@ final class FakeDirectoryGateway implements DirectoryGateway
     public function setLabeledUri(string $dn, string $httpUrl): void
     {
         $this->setLabeledUriCalls[] = ['dn' => $dn, 'httpUrl' => $httpUrl];
+    }
+
+    public function setMail(string $dn, string $mail): void
+    {
+        $this->setMailCalls[] = ['dn' => $dn, 'mail' => $mail];
+    }
+
+    public function setTelephoneNumber(string $dn, string $telephoneNumber): void
+    {
+        $this->setTelephoneNumberCalls[] = ['dn' => $dn, 'telephoneNumber' => $telephoneNumber];
     }
 
     public function quarantineUser(string $uid): void

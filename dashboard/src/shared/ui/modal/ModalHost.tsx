@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useModalContext } from './ModalProvider'
 
+/** Above layout chrome (header z-30, tabs z-25); below global loading overlay (z-100). */
+const MODAL_Z_INDEX_BASE = 40
+
 export function ModalHost() {
   const { stack, closeModal, closeTopModal } = useModalContext()
   const topModalRef = useRef<HTMLDivElement | null>(null)
@@ -30,7 +33,7 @@ export function ModalHost() {
       {stack.map((modal, idx) => {
         const isTop = idx === stack.length - 1
         return (
-          <div key={modal.key} className="modal-overlay" role="presentation" onClick={() => isTop && closeModal(modal.key)} style={{ zIndex: 20 + idx }}>
+          <div key={modal.key} className="modal-overlay" role="presentation" onClick={() => isTop && closeModal(modal.key)} style={{ zIndex: MODAL_Z_INDEX_BASE + idx }}>
             <div
               ref={isTop ? topModalRef : null}
               className="modal-card"

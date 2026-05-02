@@ -51,6 +51,9 @@ export const en = {
     selectAllAria: 'Select all',
     approveSelected: 'Approve selected',
     rejectSelected: 'Reject selected',
+    approve: 'Approve',
+    reject: 'Reject',
+    empty: 'No pending approval requests.',
     decideHint: 'Approval actions require `approval.decide` permission.',
   },
   events: {
@@ -161,6 +164,8 @@ export const en = {
     bothNoPerm: 'Provisioning and reconciliation actions require dedicated RBAC permissions.',
     userRowDn: 'DN: {{dn}}',
     userRowUrl: 'URL: {{url}}',
+    userRowMail: 'Mail: {{mail}}',
+    userRowTelephone: 'Phone: {{phone}}',
     noUrl: '(no URL)',
     modalCreateTitle: 'Add source record',
     modalCreateHeading: 'Add source record',
@@ -170,6 +175,8 @@ export const en = {
     placeholderUser: 'user',
     placeholderPassword: 'password',
     placeholderHttpUrl: 'httpUrl',
+    placeholderMail: 'mail',
+    placeholderTelephoneNumber: 'telephoneNumber',
     runProvisioning: 'Run Provisioning',
     cards: {
       sourceUsers: 'Source users',
@@ -206,7 +213,11 @@ export const en = {
   profile: {
     title: 'My profile',
     sessionPermissions: 'Session permissions:',
+    sessionPermissionsLabel: 'Session permissions',
+    sessionPermissionsModalTitle: 'Session permissions',
     authGroups: 'Auth groups:',
+    authGroupsLabel: 'Auth groups',
+    authGroupsModalTitle: 'Auth groups',
     noPermissions: 'No permissions in current in-memory session.',
     noGroups: 'No groups in current auth context.',
     noLdapView:
@@ -224,9 +235,13 @@ export const en = {
     editAttribute: 'Edit {{attribute}}',
     modalTitleEdit: 'Edit {{attribute}}',
     updateHint: 'Update your profile attribute value.',
+    pendingApproval:
+      'Your change to {{fields}} was submitted for administrator approval. It will apply after approval.',
     saving: 'Saving...',
     editable: 'Editable',
     failedUpdate: 'Failed to update attribute',
+    rbacAllPermissionsAria: 'Open session permissions',
+    rbacAllGroupsAria: 'Open authorization groups',
   },
   errors: {
     routeTitle: 'Something went wrong',

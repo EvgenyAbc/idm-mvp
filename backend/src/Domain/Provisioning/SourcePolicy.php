@@ -8,7 +8,7 @@ namespace IDM\Domain\Provisioning;
 interface SourcePolicy
 {
     /**
-     * @return list<array{user:string,password:string,httpUrl:string}>
+     * @return list<array{user:string,password:string,httpUrl:string,mail:string,telephoneNumber:string}>
      */
     public function rows(): array;
 

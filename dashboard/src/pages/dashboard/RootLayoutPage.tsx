@@ -161,11 +161,11 @@ export function RootLayoutPage() {
       <div className="row header-bar">
         <h1>{t("layout.title")}</h1>
         <div className="header-actions">
-          <LanguageSwitch />
           <div className="header-user">
             {t("layout.signedInAs")}{" "}
             <strong>{session.username}</strong>
           </div>
+          <LanguageSwitch />
           <Form method="post" action="/logout">
             <button type="submit">{t("layout.logout")}</button>
           </Form>

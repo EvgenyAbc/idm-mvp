@@ -15,19 +15,17 @@ export function LoginPage() {
     | undefined;
   const navigation = useNavigation();
   const busy = navigation.state === "submitting";
-  const [quick, setQuick] = useState<{ username: string; password: string }>({
-    username: "",
-    password: "",
-  });
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <div className="login-page">
       <div className="login-backdrop" />
+      <div className="login-page-lang-switch">
+        <LanguageSwitch />
+      </div>
       <div className="login-panel">
         <header className="login-header">
-          <div className="login-lang-switch">
-            <LanguageSwitch />
-          </div>
           <p className="login-brand">{t("login.brand")}</p>
           <h1 className="login-title">{t("login.title")}</h1>
           <p className="login-subtitle">{t("login.subtitle")}</p>
@@ -40,7 +38,8 @@ export function LoginPage() {
               name="username"
               autoComplete="username"
               placeholder={t("login.placeholderUsername")}
-              defaultValue={quick.username}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
             />
           </label>
           <label className="login-field">
@@ -51,7 +50,8 @@ export function LoginPage() {
               type="password"
               autoComplete="current-password"
               placeholder={t("login.placeholderPassword")}
-              defaultValue={quick.password}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </label>
           {actionData?.messageKey ? (
@@ -71,9 +71,10 @@ export function LoginPage() {
               className="login-chip"
               key={u.username}
               type="button"
-              onClick={() =>
-                setQuick({ username: u.username, password: u.password })
-              }
+              onClick={() => {
+                setUsername(u.username);
+                setPassword(u.password);
+              }}
             >
               {u.username === QUICK_LOGIN_ADMIN_USERNAME
                 ? t("login.adminChip")

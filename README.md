@@ -33,17 +33,22 @@ Canonical source row:
 
 `user,password,httpUrl`
 
+Optional CSV / SQLite columns (same header names as LDAP attributes):
+
+- `mail` -> LDAP `mail`
+- `telephoneNumber` -> LDAP `telephoneNumber`
+
 LDAP mapping:
 
 - `user` -> `uid`
 - `password` -> `userPassword` (applied via backend LDAP operations)
-- `httpUrl` -> `labeledURI`
+- `httpUrl` -> `labeledURI` (stored as column `http_url` in SQLite)
 
 Policy highlights:
 
 - SQLite source is authoritative for mapped attributes.
 - URL policy accepts valid `http://` or `https://` values.
-- Reconcile can detect `labeledURI` drift and remediate from source when source URL is valid.
+- Reconcile can detect `labeledURI`, `mail`, and `telephoneNumber` drift and remediate from source when applicable (including valid URL for `labeledURI`).
 - LDAP users absent from source are added to quarantine group (`cn=quarantine,...`).
 
 ## Architecture
@@ -153,6 +158,12 @@ Starts LDAP, backend, dashboard build, nginx gateway, and one-shot bootstrap.
 docker compose up -d --build
 ```
 
+Recommended fresh start (resets LDAP volumes, SQLite, rebuilds dashboard image):
+
+```bash
+./docker_start.sh
+```
+
 Windows CMD helper:
 
 ```bat
@@ -169,10 +180,9 @@ Key compose behavior:
 
 - backend LDAP bind target is internal `ldap://ldap:389`
 - backend SQLite defaults to `storage/idm_docker.sqlite`
-- first successful bootstrap writes `storage/.docker_first_bootstrap_done`
-- future restarts skip reseeding while marker exists
+- the one-shot `bootstrap` service runs [`ops/bootstrap_fresh_ldap_idm.sh`](ops/bootstrap_fresh_ldap_idm.sh) against `backend` and `ldap`; by default `BOOTSTRAP_MARKER_ENABLE` is off so each bootstrap container run performs full LDAP + IDM seeding (set `BOOTSTRAP_MARKER_ENABLE=1` to skip when `storage/.docker_first_bootstrap_done` exists)
 
-Force a fresh Docker bootstrap:
+Force a fresh Docker bootstrap manually (same idea as `./docker_start.sh`):
 
 ```bash
 docker compose down -v

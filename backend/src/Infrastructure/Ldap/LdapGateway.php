@@ -54,7 +54,7 @@ final class LdapGateway implements DirectoryGateway
     {
         $dn = 'ou=People,' . $this->baseDn;
         $cmd = sprintf(
-            "ldapsearch -x -H %s -LLL -D %s -w %s -b %s '(uid=*)' uid labeledURI uidNumber",
+            "ldapsearch -x -H %s -LLL -D %s -w %s -b %s '(uid=*)' uid labeledURI uidNumber mail telephoneNumber",
             escapeshellarg(Config::ldapUri()),
             escapeshellarg($this->adminDn),
             escapeshellarg($this->adminPassword),
@@ -167,7 +167,10 @@ final class LdapGateway implements DirectoryGateway
         }
 
         $safe = $this->escapeFilterValue($term);
-        $filter = sprintf('(|(uid=*%1$s*)(cn=*%1$s*)(mail=*%1$s*)(labeledURI=*%1$s*))', $safe);
+        $filter = sprintf(
+            '(|(uid=*%1$s*)(cn=*%1$s*)(mail=*%1$s*)(labeledURI=*%1$s*)(telephoneNumber=*%1$s*))',
+            $safe
+        );
         $cmd = sprintf(
             "ldapsearch -x -H %s -LLL -D %s -w %s -b %s %s '*'",
             escapeshellarg(Config::ldapUri()),
@@ -242,6 +245,38 @@ final class LdapGateway implements DirectoryGateway
         $this->modifyWithLdif($ldif);
     }
 
+    /** Set or clear mail (empty deletes). Used by reconciliation drift remediation. */
+    public function setMail(string $dn, string $mail): void
+    {
+        $dn = trim($dn);
+        if ($dn === '') {
+            throw new RuntimeException('Entry DN is required');
+        }
+        $text = trim($mail);
+        if ($text === '') {
+            $ldif = "dn: {$dn}\nchangetype: modify\ndelete: mail\n";
+        } else {
+            $ldif = "dn: {$dn}\nchangetype: modify\nreplace: mail\nmail: {$text}\n";
+        }
+        $this->modifyWithLdif($ldif);
+    }
+
+    /** Set or clear telephoneNumber (empty deletes). Used by reconciliation drift remediation. */
+    public function setTelephoneNumber(string $dn, string $telephoneNumber): void
+    {
+        $dn = trim($dn);
+        if ($dn === '') {
+            throw new RuntimeException('Entry DN is required');
+        }
+        $text = trim($telephoneNumber);
+        if ($text === '') {
+            $ldif = "dn: {$dn}\nchangetype: modify\ndelete: telephoneNumber\n";
+        } else {
+            $ldif = "dn: {$dn}\nchangetype: modify\nreplace: telephoneNumber\ntelephoneNumber: {$text}\n";
+        }
+        $this->modifyWithLdif($ldif);
+    }
+
     public function exportEntries(string $query): array
     {
         $term = trim($query);
@@ -252,14 +287,19 @@ final class LdapGateway implements DirectoryGateway
         return $this->searchEntries($term);
     }
 
-    public function upsertUser(string $uid, string $password, string $httpUrl): void
-    {
+    public function upsertUser(
+        string $uid,
+        string $password,
+        string $httpUrl,
+        string $mail = '',
+        string $telephoneNumber = ''
+    ): void {
         $existing = $this->findUser($uid);
         if ($existing === null) {
-            $this->addUser($uid, $password, $httpUrl);
+            $this->addUser($uid, $password, $httpUrl, $mail, $telephoneNumber);
             return;
         }
-        $this->modifyUser($uid, $password, $httpUrl, $existing);
+        $this->modifyUser($uid, $password, $httpUrl, $existing, $mail, $telephoneNumber);
     }
 
     public function applyApprovedChange(string $username, string $field, string $value): void
@@ -274,6 +314,34 @@ final class LdapGateway implements DirectoryGateway
                 $dn = sprintf('uid=%s,ou=People,%s', $username, $this->baseDn);
             }
             $this->setLabeledUri($dn, $value);
+
+            return;
+        }
+
+        if ($field === 'mail') {
+            $existing = $this->findUser($username);
+            if ($existing === null) {
+                throw new RuntimeException('User not found for mail approval');
+            }
+            $dn = trim((string) ($existing['dn'] ?? ''));
+            if ($dn === '') {
+                $dn = sprintf('uid=%s,ou=People,%s', $username, $this->baseDn);
+            }
+            $this->setMail($dn, $value);
+
+            return;
+        }
+
+        if ($field === 'telephoneNumber') {
+            $existing = $this->findUser($username);
+            if ($existing === null) {
+                throw new RuntimeException('User not found for telephoneNumber approval');
+            }
+            $dn = trim((string) ($existing['dn'] ?? ''));
+            if ($dn === '') {
+                $dn = sprintf('uid=%s,ou=People,%s', $username, $this->baseDn);
+            }
+            $this->setTelephoneNumber($dn, $value);
 
             return;
         }
@@ -297,6 +365,34 @@ final class LdapGateway implements DirectoryGateway
         }
         $v = $person['labeledURI'] ?? null;
         if ($v === null || $v === '') {
+            return null;
+        }
+
+        return (string) $v;
+    }
+
+    public function mailForUid(string $uid): ?string
+    {
+        $person = $this->findUser(trim($uid));
+        if ($person === null) {
+            return null;
+        }
+        $v = $person['mail'] ?? null;
+        if ($v === null || trim((string) $v) === '') {
+            return null;
+        }
+
+        return (string) $v;
+    }
+
+    public function telephoneNumberForUid(string $uid): ?string
+    {
+        $person = $this->findUser(trim($uid));
+        if ($person === null) {
+            return null;
+        }
+        $v = $person['telephoneNumber'] ?? null;
+        if ($v === null || trim((string) $v) === '') {
             return null;
         }
 
@@ -451,12 +547,30 @@ final class LdapGateway implements DirectoryGateway
         return null;
     }
 
-    private function addUser(string $uid, string $password, string $httpUrl): void
-    {
+    private function addUser(
+        string $uid,
+        string $password,
+        string $httpUrl,
+        string $mail = '',
+        string $telephoneNumber = ''
+    ): void {
         $hash = $this->passwordHash($password);
         $dn = sprintf('uid=%s,ou=People,%s', $uid, $this->baseDn);
         $uidNumber = $this->nextUidNumber();
-        $ldif = "dn: {$dn}\nobjectClass: inetOrgPerson\nobjectClass: posixAccount\nobjectClass: shadowAccount\nuid: {$uid}\nou: People\ncn: {$uid}\nsn: {$uid}\nuidNumber: {$uidNumber}\ngidNumber: 5000\nhomeDirectory: /home/{$uid}\nloginShell: /bin/bash\nuserPassword: {$hash}\nlabeledURI: {$httpUrl}\n";
+        $extra = '';
+        $m = trim($mail);
+        if ($m !== '') {
+            $extra .= "mail: {$m}\n";
+        }
+        $tel = trim($telephoneNumber);
+        if ($tel !== '') {
+            $extra .= "telephoneNumber: {$tel}\n";
+        }
+        $uri = trim($httpUrl);
+        if ($uri !== '') {
+            $extra .= "labeledURI: {$uri}\n";
+        }
+        $ldif = "dn: {$dn}\nobjectClass: inetOrgPerson\nobjectClass: posixAccount\nobjectClass: shadowAccount\nuid: {$uid}\nou: People\ncn: {$uid}\nsn: {$uid}\nuidNumber: {$uidNumber}\ngidNumber: 5000\nhomeDirectory: /home/{$uid}\nloginShell: /bin/bash\nuserPassword: {$hash}\n{$extra}";
         $this->addWithLdif($ldif);
     }
 
@@ -474,12 +588,65 @@ final class LdapGateway implements DirectoryGateway
         return $max + 1;
     }
 
-    private function modifyUser(string $uid, string $password, string $httpUrl, array $existing): void
-    {
+    private function modifyUser(
+        string $uid,
+        string $password,
+        string $httpUrl,
+        array $existing,
+        string $mail = '',
+        string $telephoneNumber = ''
+    ): void {
         $hash = $this->passwordHash($password);
         $dn = $existing['dn'] ?? sprintf('uid=%s,ou=People,%s', $uid, $this->baseDn);
-        $ldif = "dn: {$dn}\nchangetype: modify\nreplace: labeledURI\nlabeledURI: {$httpUrl}\n-\nreplace: userPassword\nuserPassword: {$hash}\n";
-        $this->modifyWithLdif($ldif);
+        $lines = ["dn: {$dn}", 'changetype: modify'];
+        $needSep = false;
+        $this->appendPeopleModifyChunk($lines, $needSep, 'mail', trim($mail), $existing['mail'] ?? null);
+        $this->appendPeopleModifyChunk(
+            $lines,
+            $needSep,
+            'telephoneNumber',
+            trim($telephoneNumber),
+            $existing['telephoneNumber'] ?? null
+        );
+        $this->appendPeopleModifyChunk($lines, $needSep, 'labeledURI', trim($httpUrl), $existing['labeledURI'] ?? null);
+        if ($needSep) {
+            $lines[] = '-';
+        }
+        $lines[] = 'replace: userPassword';
+        $lines[] = 'userPassword: ' . $hash;
+        $this->modifyWithLdif(implode("\n", $lines) . "\n");
+    }
+
+    /**
+     * @param list<string> $lines
+     */
+    private function appendPeopleModifyChunk(
+        array &$lines,
+        bool &$needSep,
+        string $attr,
+        string $newVal,
+        mixed $oldVal
+    ): void {
+        $oldStr = $oldVal === null || $oldVal === '' ? '' : trim((string) $oldVal);
+        if ($newVal === '') {
+            if ($oldStr !== '') {
+                if ($needSep) {
+                    $lines[] = '-';
+                }
+                $needSep = true;
+                $lines[] = 'delete: ' . $attr;
+            }
+            return;
+        }
+        if ($newVal === $oldStr) {
+            return;
+        }
+        if ($needSep) {
+            $lines[] = '-';
+        }
+        $needSep = true;
+        $lines[] = 'replace: ' . $attr;
+        $lines[] = $attr . ': ' . $newVal;
     }
 
     private function addWithLdif(string $ldif): void
@@ -558,6 +725,10 @@ final class LdapGateway implements DirectoryGateway
                     $person['uid'] = substr($line, 5);
                 } elseif (str_starts_with($line, 'labeledURI: ')) {
                     $person['labeledURI'] = substr($line, 12);
+                } elseif (str_starts_with($line, 'mail: ')) {
+                    $person['mail'] = substr($line, 6);
+                } elseif (str_starts_with($line, 'telephoneNumber: ')) {
+                    $person['telephoneNumber'] = substr($line, 17);
                 } elseif (str_starts_with($line, 'uidNumber: ')) {
                     $person['uidNumber'] = substr($line, 10);
                 }

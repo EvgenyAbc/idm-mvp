@@ -189,4 +189,54 @@ ok('password drift + labeledURI drift both counted', static function (): void {
     assert_same(1, $result['drift_remediated']);
 });
 
+ok('mail drift → remediated from CSV', static function (): void {
+    $ldap = new FakeDirectoryGateway();
+    $ldap->people = [
+        ['uid' => 'jdoe', 'dn' => 'uid=jdoe,ou=People,dc=example,dc=com', 'labeledURI' => 'https://example.com/users/jdoe', 'mail' => 'old@wrong.example'],
+    ];
+    $ldap->passwordOkForUid['jdoe'] = true;
+
+    $csv = new StaticCsvPolicy([
+        ['user' => 'jdoe', 'password' => 'secret', 'httpUrl' => 'https://example.com/users/jdoe', 'mail' => 'jdoe@example.com'],
+    ]);
+
+    $reconciler = new Reconciler($ldap, $csv, memory_audit());
+    $result = $reconciler->run('native_mail');
+
+    assert_same(1, $result['drift_detected']);
+    assert_same(1, $result['drift_remediated']);
+    assert_same(1, count($ldap->setMailCalls));
+    assert_same('jdoe@example.com', $ldap->setMailCalls[0]['mail']);
+});
+
+ok('telephoneNumber drift → remediated from CSV', static function (): void {
+    $ldap = new FakeDirectoryGateway();
+    $ldap->people = [
+        [
+            'uid' => 'jdoe',
+            'dn' => 'uid=jdoe,ou=People,dc=example,dc=com',
+            'labeledURI' => 'https://example.com/users/jdoe',
+            'telephoneNumber' => '+1999',
+        ],
+    ];
+    $ldap->passwordOkForUid['jdoe'] = true;
+
+    $csv = new StaticCsvPolicy([
+        [
+            'user' => 'jdoe',
+            'password' => 'secret',
+            'httpUrl' => 'https://example.com/users/jdoe',
+            'telephoneNumber' => '+15551234567',
+        ],
+    ]);
+
+    $reconciler = new Reconciler($ldap, $csv, memory_audit());
+    $result = $reconciler->run('native_tel');
+
+    assert_same(1, $result['drift_detected']);
+    assert_same(1, $result['drift_remediated']);
+    assert_same(1, count($ldap->setTelephoneNumberCalls));
+    assert_same('+15551234567', $ldap->setTelephoneNumberCalls[0]['telephoneNumber']);
+});
+
 fwrite(STDOUT, "\nAll reconciler scenario tests passed.\n");

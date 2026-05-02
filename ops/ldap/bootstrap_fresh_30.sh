@@ -91,6 +91,8 @@ add_or_update_user() {
   local password="$2"
   local url="$3"
   local uid_number="$4"
+  local mail="${5:-}"
+  local tel="${6:-}"
   local dn="uid=${uid},${PEOPLE_DN}"
   local hash
   hash="$(slappasswd -s "${password}")"
@@ -109,6 +111,12 @@ userPassword: ${hash}
 -
 replace: labeledURI
 labeledURI: ${url}
+-
+replace: mail
+mail: ${mail}
+-
+replace: telephoneNumber
+telephoneNumber: ${tel}
 EOF
     ldapmodify -x -D "${LDAP_ADMIN_DN}" -w "${LDAP_ADMIN_PASSWORD}" -f "${mod}" >/dev/null
     rm -f "${mod}"
@@ -133,6 +141,8 @@ homeDirectory: /home/${uid}
 loginShell: /bin/bash
 userPassword: ${hash}
 labeledURI: ${url}
+mail: ${mail}
+telephoneNumber: ${tel}
 EOF
   ldapadd -x -c -D "${LDAP_ADMIN_DN}" -w "${LDAP_ADMIN_PASSWORD}" -f "${add}" >/dev/null
   rm -f "${add}"
@@ -140,12 +150,16 @@ EOF
 
 seed_users_from_csv() {
   local n=0
-  while IFS=',' read -r user password http_url; do
-    if [[ "${user}" == "user" ]]; then
-      continue
-    fi
+  while IFS=',' read -r user password http_url mail tel || [[ -n "${user}" ]]; do
+    user="${user//$'\r'/}"
+    [[ "${user}" == "user" ]] && continue
+    [[ -z "${user}" ]] && continue
+    password="${password//$'\r'/}"
+    http_url="${http_url//$'\r'/}"
+    mail="${mail//$'\r'/}"
+    tel="${tel//$'\r'/}"
     n=$((n + 1))
-    add_or_update_user "${user}" "${password}" "${http_url}" "$((20000 + n))"
+    add_or_update_user "${user}" "${password}" "${http_url}" "$((20000 + n))" "${mail}" "${tel}"
   done < "${CSV_PATH}"
 }
 
